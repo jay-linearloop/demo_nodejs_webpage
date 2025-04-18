@@ -22,11 +22,11 @@ jobs:
 
       - name: Write .env file from UAT secret
         run: |
-          echo "${TEST_ENV}" > .env
+          echo "${UAT_ENV}" > .env
 
         shell: bash
         env:
-          UAT_ENV: ${{ secrets.TEST_ENV }}
+          UAT_ENV: ${{ secrets.UAT_ENV }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
