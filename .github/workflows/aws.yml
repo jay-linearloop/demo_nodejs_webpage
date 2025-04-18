@@ -28,8 +28,7 @@ jobs:
             echo "ENV=uat" >> $GITHUB_ENV
             echo "${{ secrets.UAT_ENV }}" > .env
           fi
-          echo "VERSION=V${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          echo ".env contents:"
+          echo "VERSION=V$(git rev-parse --short HEAD)" >> $GITHUB_ENV          echo ".env contents:"
           cat .env
 
       - name: Configure AWS credentials
