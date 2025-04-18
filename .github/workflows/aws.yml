@@ -9,7 +9,6 @@ on:
 
 jobs:
   build-and-deploy:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     env:
@@ -24,7 +23,7 @@ jobs:
       - name: Set dynamic ENV and VERSION
         run: |
           echo "ENV=${{ github.base_ref }}" >> $GITHUB_ENV
-          echo "VERSION=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "VERSION=V${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
       - name: Create .env file
         run: |
