@@ -1,11 +1,10 @@
-name: Deploy UAT to AWS ECR
+name: Deploy to AWS ECR
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - uat
+      - prod
 
 jobs:
   build-and-deploy:
@@ -20,14 +19,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set dynamic ENV and VERSION
+      - name: Set ENV and VERSION
         run: |
-          echo "ENV=${{ github.base_ref }}" >> $GITHUB_ENV
+          if [[ "${GITHUB_REF##*/}" == "prod" ]]; then
+            echo "ENV=PROD" >> $GITHUB_ENV
+            echo "${{ secrets.PROD_ENV }}" > .env
+          else
+            echo "ENV=UAT" >> $GITHUB_ENV
+            echo "${{ secrets.UAT_ENV }}" > .env
+          fi
           echo "VERSION=V${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-
-      - name: Create .env file
-        run: |
-          echo "${{ secrets.UAT_ENV }}" > .env
           echo ".env contents:"
           cat .env
 
