@@ -1,0 +1,51 @@
+name: Deploy UAT to AWS ECR
+
+on:
+  push:
+    branches:
+      - test-cicd  
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 580655243880
+      ENV: uat
+      VERSION: v8
+      REPO_NAME: shop_sso
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Write .env file from UAT secret
+        run: |
+          echo "${TEST_ENV}" > .env
+
+        shell: bash
+        env:
+          UAT_ENV: ${{ secrets.TEST_ENV }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to AWS ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS \
+          --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Build, tag and push Docker image to ECR
+        run: |
+          IMAGE=$ENV/$REPO_NAME:$VERSION
+          ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          
+          docker build -t $IMAGE .
+          docker tag $IMAGE $ECR_URL/$IMAGE
+          docker push $ECR_URL/$IMAGE

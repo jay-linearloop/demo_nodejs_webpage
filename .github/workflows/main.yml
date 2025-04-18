@@ -3,7 +3,7 @@ name: Test Docker Build & Push with .env
 on:
   push:
     branches:
-      - test-cicd  # Change this to your test branch name
+      - test  # Change this to your test branch name
 
 jobs:
   build-and-push:
