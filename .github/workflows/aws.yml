@@ -22,7 +22,7 @@ jobs:
       - name: Set ENV and VERSION
         run: |
           if [[ "${GITHUB_REF##*/}" == "prod" ]]; then
-            echo "ENV=PROD" >> $GITHUB_ENV
+            echo "ENV=prod" >> $GITHUB_ENV
             echo "${{ secrets.PROD_ENV }}" > .env
           else
             echo "ENV=uat" >> $GITHUB_ENV
