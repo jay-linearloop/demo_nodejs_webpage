@@ -23,6 +23,8 @@ jobs:
       - name: Write .env file from UAT secret
         run: |
           echo "${UAT_ENV}" > .env
+          echo ".env file contents:"
+          cat .env
 
         shell: bash
         env:
