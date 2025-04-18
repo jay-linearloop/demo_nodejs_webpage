@@ -1,34 +1,36 @@
 name: Deploy UAT to AWS ECR
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
-      - test-cicd  
+      - uat
 
 jobs:
   build-and-deploy:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     env:
       AWS_REGION: us-east-1
       AWS_ACCOUNT_ID: 580655243880
-      ENV: uat
-      VERSION: v8
       REPO_NAME: shop_sso
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Write .env file from UAT secret
+      - name: Set dynamic ENV and VERSION
         run: |
-          echo "${UAT_ENV}" > .env
-          echo ".env file contents:"
-          cat .env
+          echo "ENV=${{ github.base_ref }}" >> $GITHUB_ENV
+          echo "VERSION=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
-        shell: bash
-        env:
-          UAT_ENV: ${{ secrets.UAT_ENV }}
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.UAT_ENV }}" > .env
+          echo ".env contents:"
+          cat .env
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -43,11 +45,12 @@ jobs:
           docker login --username AWS \
           --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      - name: Build, tag and push Docker image to ECR
+      - name: Build, Tag, and Push Docker Image
         run: |
           IMAGE=$ENV/$REPO_NAME:$VERSION
           ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          
+
+          echo "Building image: $IMAGE"
           docker build -t $IMAGE .
           docker tag $IMAGE $ECR_URL/$IMAGE
           docker push $ECR_URL/$IMAGE
