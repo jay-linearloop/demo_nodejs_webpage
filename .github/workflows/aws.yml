@@ -25,7 +25,7 @@ jobs:
             echo "ENV=PROD" >> $GITHUB_ENV
             echo "${{ secrets.PROD_ENV }}" > .env
           else
-            echo "ENV=UAT" >> $GITHUB_ENV
+            echo "ENV=uat" >> $GITHUB_ENV
             echo "${{ secrets.UAT_ENV }}" > .env
           fi
           echo "VERSION=V${{ github.event.pull_request.number }}" >> $GITHUB_ENV
