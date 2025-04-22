@@ -126,11 +126,20 @@ jobs:
 
       - name: Trigger App Runner Deployment
         run: |
-          if [[ "$ENV" == "prod" ]]; then
-            SERVICE_NAME="shop-sso-prod"
-          else
-            SERVICE_NAME="uat-sso-test"
-          fi
-
-          echo "Triggering deployment for App Runner service: $SERVICE_NAME"
-          aws apprunner start-deployment --service-name $SERVICE_NAME
+            if [[ "$ENV" == "prod" ]]; then
+              SERVICE_NAME="shop-sso-prod"
+            else
+              SERVICE_NAME="uat-sso-test"
+            fi
+  
+            echo "Looking up ARN for service: $SERVICE_NAME"
+            SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
+  
+            if [[ -z "$SERVICE_ARN" ]]; then
+              echo "Error: Service ARN not found for $SERVICE_NAME"
+              exit 1
+            fi
+  
+            echo "Triggering deployment for App Runner service ARN: $SERVICE_ARN"
+            aws apprunner start-deployment --service-arn "$SERVICE_ARN"
+  
