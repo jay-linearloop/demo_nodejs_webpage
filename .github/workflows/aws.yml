@@ -124,22 +124,19 @@ jobs:
           echo "Pushing image to ECR: $ECR_URL/$IMAGE"
           docker push $ECR_URL/$IMAGE
 
-      - name: Trigger App Runner Deployment
+      - name: Update App Runner Service with New Image
         run: |
+            IMAGE=$ENV/$REPO_NAME:$VERSION
+            ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            IMAGE_URI=$ECR_URL/$IMAGE
+  
             if [[ "$ENV" == "prod" ]]; then
-              SERVICE_NAME="shop-sso-prod"
+              SERVICE_ARN="arn:aws:apprunner:us-east-1:580655243880:service/shop-sso-prod/xxxxxxxxxxxx"
             else
-              SERVICE_NAME="uat-sso-test"
+              SERVICE_ARN="arn:aws:apprunner:us-east-1:580655243880:service/uat-sso-test/04f98d161622454990e0ece74c74b7e5"
             fi
   
-            echo "Looking up ARN for service: $SERVICE_NAME"
-            SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
-  
-            if [[ -z "$SERVICE_ARN" ]]; then
-              echo "Error: Service ARN not found for $SERVICE_NAME"
-              exit 1
-            fi
-  
-            echo "Triggering deployment for App Runner service ARN: $SERVICE_ARN"
-            aws apprunner start-deployment --service-arn "$SERVICE_ARN"
+            echo "Updating App Runner service: $SERVICE_ARN"
+            aws apprunner update-service \
+              --service-arn "$SERVICE_ARN"
   
