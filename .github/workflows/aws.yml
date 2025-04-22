@@ -140,4 +140,38 @@ jobs:
             aws apprunner update-service \
               --service-arn "$SERVICE_ARN" \
               --source-configuration "ImageRepository={ImageIdentifier=$IMAGE_URI,ImageRepositoryType=ECR,ImageConfiguration={Port=8081}}"
-  
+
+
+            echo "Updating App Runner service: $SERVICE_ARN"
+            RESPONSE=$(aws apprunner update-service \
+            --service-arn "$SERVICE_ARN" \
+            --source-configuration "ImageRepository={ImageIdentifier=$IMAGE_URI,ImageRepositoryType=ECR,ImageConfiguration={Port=8000}}" \
+            --region $AWS_REGION)
+
+            OPERATION_ID=$(echo "$RESPONSE" | jq -r '.OperationId')
+
+            echo "Waiting for deployment to finish..."
+
+            while true; do
+              STATUS_JSON=$(aws apprunner describe-operation \
+              --operation-id "$OPERATION_ID" \
+              --region $AWS_REGION)
+
+            STATUS=$(echo "$STATUS_JSON" | jq -r '.Operation.Status')
+            STARTED_AT=$(echo "$STATUS_JSON" | jq -r '.Operation.StartedAt')
+            ENDED_AT=$(echo "$STATUS_JSON" | jq -r '.Operation.EndedAt')
+
+            echo "Current Status: $STATUS"
+
+            if [[ "$STATUS" == "SUCCEEDED" || "$STATUS" == "FAILED" || "$STATUS" == "ROLLBACK_SUCCEEDED" ]]; then
+              echo "------------------------------------"
+              echo "Operation ID: $OPERATION_ID"
+              echo "Status      : $STATUS"
+              echo "Started At  : $STARTED_AT"
+              echo "Ended At    : $ENDED_AT"
+              echo "------------------------------------"
+              break
+            fi
+
+            sleep 5
+            done
