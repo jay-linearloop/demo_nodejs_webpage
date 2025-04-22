@@ -1,4 +1,4 @@
-# name: Deploy to AWS ECR
+# name: Deploy to AWS ECR WITHOUT App Runner
 
 # on:
 #   push:
@@ -131,9 +131,9 @@ jobs:
             IMAGE_URI=$ECR_URL/$IMAGE
   
             if [[ "$ENV" == "prod" ]]; then
-              SERVICE_ARN="arn:aws:apprunner:us-east-1:580655243880:service/shop-sso-prod/xxxxxxxxxxxx"
+              SERVICE_ARN="arn:aws:apprunner:us-east-1:$AWS_ACCOUNT_ID:service/shop-sso-prod/xxxxxxxxxxxx"
             else
-              SERVICE_ARN="arn:aws:apprunner:us-east-1:580655243880:service/uat-sso-test/04f98d161622454990e0ece74c74b7e5"
+              SERVICE_ARN="arn:aws:apprunner:us-east-1:$AWS_ACCOUNT_ID:service/uat-sso-test/04f98d161622454990e0ece74c74b7e5"
             fi
   
             echo "Updating App Runner service: $SERVICE_ARN"
