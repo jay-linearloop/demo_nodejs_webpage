@@ -1,4 +1,68 @@
-name: Deploy to AWS ECR
+# name: Deploy to AWS ECR
+
+# on:
+#   push:
+#     branches:
+#       - uat
+#       - prod
+
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+
+#     env:
+#       AWS_REGION: us-east-1
+#       AWS_ACCOUNT_ID: 580655243880
+#       REPO_NAME: shop_sso
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       - name: Set ENV and VERSION
+#         run: |
+#           if [[ "${GITHUB_REF##*/}" == "prod" ]]; then
+#             echo "ENV=prod" >> $GITHUB_ENV
+#             echo "${{ secrets.PROD_ENV }}" > .env
+#           else
+#             echo "ENV=uat" >> $GITHUB_ENV
+#             echo "${{ secrets.UAT_ENV }}" > .env
+#           fi
+#           echo "VERSION=V$(git rev-parse --short HEAD)" >> $GITHUB_ENV          
+#           echo ".env contents:"
+#           cat .env
+
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v2
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+
+#       - name: Build and TagDocker Image
+#         run: |
+#           IMAGE=$ENV/$REPO_NAME:$VERSION
+#           ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+#           echo "Building image: $IMAGE"
+#           docker build -t $IMAGE .
+#           docker tag $IMAGE $ECR_URL/$IMAGE
+
+#       - name: Login to AWS ECR
+#         run: |
+#           aws ecr get-login-password --region $AWS_REGION | \
+#           docker login --username AWS \
+#           --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+#       - name: Push Docker Image
+#         run: |
+#           IMAGE=$ENV/$REPO_NAME:$VERSION
+#           ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+#           docker push $ECR_URL/$IMAGE
+      
+name: Deploy to AWS ECR and Update App Runner
 
 on:
   push:
@@ -28,7 +92,7 @@ jobs:
             echo "ENV=uat" >> $GITHUB_ENV
             echo "${{ secrets.UAT_ENV }}" > .env
           fi
-          echo "VERSION=V$(git rev-parse --short HEAD)" >> $GITHUB_ENV          
+          echo "VERSION=V$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo ".env contents:"
           cat .env
 
@@ -39,8 +103,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-
-      - name: Build and TagDocker Image
+      - name: Build and Tag Docker Image
         run: |
           IMAGE=$ENV/$REPO_NAME:$VERSION
           ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
@@ -51,13 +114,23 @@ jobs:
 
       - name: Login to AWS ECR
         run: |
-          aws ecr get-login-password --region $AWS_REGION | \
-          docker login --username AWS \
-          --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
       - name: Push Docker Image
         run: |
           IMAGE=$ENV/$REPO_NAME:$VERSION
           ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
+          echo "Pushing image to ECR: $ECR_URL/$IMAGE"
           docker push $ECR_URL/$IMAGE
+
+      - name: Trigger App Runner Deployment
+        run: |
+          if [[ "$ENV" == "prod" ]]; then
+            SERVICE_NAME="shop-sso-prod"
+          else
+            SERVICE_NAME="uat-sso-test"
+          fi
+
+          echo "Triggering deployment for App Runner service: $SERVICE_NAME"
+          aws apprunner start-deployment --service-name $SERVICE_NAME
