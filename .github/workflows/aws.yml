@@ -39,13 +39,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to AWS ECR
-        run: |
-          aws ecr get-login-password --region $AWS_REGION | \
-          docker login --username AWS \
-          --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      - name: Build, Tag, and Push Docker Image
+      - name: Build and TagDocker Image
         run: |
           IMAGE=$ENV/$REPO_NAME:$VERSION
           ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
@@ -53,4 +48,16 @@ jobs:
           echo "Building image: $IMAGE"
           docker build -t $IMAGE .
           docker tag $IMAGE $ECR_URL/$IMAGE
+
+      - name: Login to AWS ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS \
+          --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Push Docker Image
+        run: |
+          IMAGE=$ENV/$REPO_NAME:$VERSION
+          ECR_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
           docker push $ECR_URL/$IMAGE
