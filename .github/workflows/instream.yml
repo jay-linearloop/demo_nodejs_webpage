@@ -1,10 +1,10 @@
-name: Remote Deploy via SSH ( Instream TEST )
+name: Remote Deploy via SSH
 
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch name to deploy'
+        description: 'Branch name to deploy (e.g. main, develop, feature/x)'
         required: true
         default: 'main'
 
@@ -20,28 +20,38 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Validate branch exists on origin
+        run: |
+          BRANCH=${{ github.event.inputs.branch }}
+          if ! git ls-remote --exit-code --heads "git@${{ secrets.SSH_HOST }}:/path/to/your/project.git" "$BRANCH"; then
+            echo "❌ Branch '$BRANCH' does not exist on origin."
+            exit 1
+          fi
+
       - name: Deploy to remote server via SSH
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             set -e
             cd /path/to/your/project
 
+            BRANCH="${{ github.event.inputs.branch }}"
+
             echo "Running: git fetch and pull"
             git fetch
-            git checkout "${{ github.event.inputs.branch }}"
-            git pull origin "${{ github.event.inputs.branch }}"
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
 
             echo "Pulling backend"
             cd instream/backend || { echo "backend does not exist"; exit 1; }
             git fetch
-            git checkout "${{ github.event.inputs.branch }}"
-            git pull origin "${{ github.event.inputs.branch }}"
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
 
             echo "Pulling frontend"
             cd ../frontend || { echo "frontend does not exist"; exit 1; }
             git fetch
-            git checkout "${{ github.event.inputs.branch }}"
-            git pull origin "${{ github.event.inputs.branch }}"
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
 
             echo "Returning to root"
             cd ../..
@@ -59,5 +69,5 @@ jobs:
             docker image prune -f
             docker builder prune -f
 
-            echo "Deployment completed successfully"
+            echo "✅ Deployment completed successfully"
           EOF
