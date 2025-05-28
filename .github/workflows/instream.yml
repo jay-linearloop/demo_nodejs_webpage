@@ -1,0 +1,63 @@
+name: Remote Deploy via SSH ( Instream TEST )
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch name to deploy'
+        required: true
+        default: 'main'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to remote server via SSH
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+            cd /path/to/your/project
+
+            echo "Running: git fetch and pull"
+            git fetch
+            git checkout "${{ github.event.inputs.branch }}"
+            git pull origin "${{ github.event.inputs.branch }}"
+
+            echo "Pulling backend"
+            cd instream/backend || { echo "backend does not exist"; exit 1; }
+            git fetch
+            git checkout "${{ github.event.inputs.branch }}"
+            git pull origin "${{ github.event.inputs.branch }}"
+
+            echo "Pulling frontend"
+            cd ../frontend || { echo "frontend does not exist"; exit 1; }
+            git fetch
+            git checkout "${{ github.event.inputs.branch }}"
+            git pull origin "${{ github.event.inputs.branch }}"
+
+            echo "Returning to root"
+            cd ../..
+
+            echo "Stopping containers"
+            docker compose down
+
+            echo "Building Docker containers (no cache)"
+            docker compose build --no-cache
+
+            echo "Starting containers"
+            docker compose up -d
+
+            echo "Cleaning up images and builds"
+            docker image prune -f
+            docker builder prune -f
+
+            echo "Deployment completed successfully"
+          EOF
