@@ -14,25 +14,15 @@ jobs:
 
     steps:
       - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Validate branch exists on origin
-        run: |
-          BRANCH=${{ github.event.inputs.branch }}
-          if ! git ls-remote --exit-code --heads "git@${{ secrets.SSH_HOST }}:/path/to/your/project.git" "$BRANCH"; then
-            echo "❌ Branch '$BRANCH' does not exist on origin."
-            exit 1
-          fi
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Deploy to remote server via SSH
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
             set -e
-            cd /path/to/your/project
+            cd /var/www/dev-instream/instream
 
             BRANCH="${{ github.event.inputs.branch }}"
 
@@ -42,19 +32,20 @@ jobs:
             git pull origin "$BRANCH"
 
             echo "Pulling backend"
-            cd instream/backend || { echo "backend does not exist"; exit 1; }
+            cd backend || { echo "backend does not exist"; exit 1; }
             git fetch
             git checkout "$BRANCH"
             git pull origin "$BRANCH"
 
             echo "Pulling frontend"
-            cd ../frontend || { echo "frontend does not exist"; exit 1; }
+            cd ..
+            cd frontend || { echo "frontend does not exist"; exit 1; }
             git fetch
             git checkout "$BRANCH"
             git pull origin "$BRANCH"
 
             echo "Returning to root"
-            cd ../..
+            cd ..
 
             echo "Stopping containers"
             docker compose down
@@ -66,8 +57,6 @@ jobs:
             docker compose up -d
 
             echo "Cleaning up images and builds"
-            docker image prune -f
-            docker builder prune -f
-
+            docker image prune -f && docker builder prune -f
             echo "✅ Deployment completed successfully"
           EOF
